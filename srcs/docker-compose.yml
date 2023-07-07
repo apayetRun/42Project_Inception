@@ -1,0 +1,92 @@
+version: '3'
+services:
+
+  nginx:
+    image: nginx
+    hostname: nginx.apayet.42.fr
+    build: ./nginx
+    ports:
+      - "443:443"
+    container_name: nginx
+    networks:
+      - inception
+    volumes:
+        - wordpress_data:/var/www/html
+    restart : always
+
+  wordpress:
+    image: wordpress
+    hostname: wordpress.apayet.42.fr
+    env_file:
+      - .env
+    build: 
+      context: ./wordpress
+      args:
+        - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+        - MYSQL_USER=$MYSQL_USER
+        - MYSQL_PASSWORD=$MYSQL_PASSWORD
+        - MYSQL_DATABASE=$MYSQL_DATABASE
+    expose:
+      - 9000
+    container_name: wordpress
+    networks:
+      - inception
+    volumes:
+      - wordpress_data:/var/www/html
+    restart : always
+    command:  /usr/sbin/php-fpm7.3 -F
+
+  mariadb:
+    image: mariadb
+    container_name: mariadb
+    hostname : mariaDB.apayet.42.fr
+    env_file:
+      - .env
+    build :
+      context: ./mariadb
+      args:
+        - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+        - MYSQL_USER=$MYSQL_USER
+        - MYSQL_PASSWORD=$MYSQL_PASSWORD
+        - MYSQL_DATABASE=$MYSQL_DATABASE
+        - WP_ADMIN_USER=$WP_ADMIN_USER
+        - WP_ADMIN_PASSWORD=$WP_ADMIN_PASSWORD
+        - WP_ADMIN_EMAIL=$WP_ADMIN_EMAIL
+        - WP_REGULAR_USER=$WP_REGULAR_USER
+        - WP_REGULAR_PASSWORD=$WP_REGULAR_PASSWORD
+        - WP_REGULAR_EMAIL=$WP_REGULAR_EMAIL
+    environment:
+      - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+    expose:
+      - 3306
+    networks:
+      - inception
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart : always
+    command: mysqld_safe --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0 --verbose
+
+networks:
+  inception:
+    name: inception
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.19.0.0/16
+          gateway: 172.19.0.1
+volumes:
+  wordpress_data:
+    name: wordpress_data
+    driver: local
+    driver_opts:
+      type: o
+      device : /home/apayet/data/html
+      o: bind
+  mariadb_data:
+    name: mariadb_data
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/apayet/data/mysql
+      o: bind
